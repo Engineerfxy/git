@@ -1,0 +1,161 @@
+from lxml import etree
+import time
+import requests
+import random
+import re
+import threading
+import csv
+import json
+
+
+#头部池
+USER_AGENT = random.choice([
+        "Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.1 (KHTML, like Gecko) Chrome/22.0.1207.1 Safari/537.1"
+        "Mozilla/5.0 (X11; CrOS i686 2268.111.0) AppleWebKit/536.11 (KHTML, like Gecko) Chrome/20.0.1132.57 Safari/536.11",
+        "Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/536.6 (KHTML, like Gecko) Chrome/20.0.1092.0 Safari/536.6",
+        "Mozilla/5.0 (Windows NT 6.2) AppleWebKit/536.6 (KHTML, like Gecko) Chrome/20.0.1090.0 Safari/536.6",
+        "Mozilla/5.0 (Windows NT 6.2; WOW64) AppleWebKit/537.1 (KHTML, like Gecko) Chrome/19.77.34.5 Safari/537.1",
+        "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/536.5 (KHTML, like Gecko) Chrome/19.0.1084.9 Safari/536.5",
+        "Mozilla/5.0 (Windows NT 6.0) AppleWebKit/536.5 (KHTML, like Gecko) Chrome/19.0.1084.36 Safari/536.5",
+        "Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/536.3 (KHTML, like Gecko) Chrome/19.0.1063.0 Safari/536.3",
+        "Mozilla/5.0 (Windows NT 5.1) AppleWebKit/536.3 (KHTML, like Gecko) Chrome/19.0.1063.0 Safari/536.3",
+        "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_8_0) AppleWebKit/536.3 (KHTML, like Gecko) Chrome/19.0.1063.0 Safari/536.3",
+        "Mozilla/5.0 (Windows NT 6.2) AppleWebKit/536.3 (KHTML, like Gecko) Chrome/19.0.1062.0 Safari/536.3",
+        "Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/536.3 (KHTML, like Gecko) Chrome/19.0.1062.0 Safari/536.3",
+        "Mozilla/5.0 (Windows NT 6.2) AppleWebKit/536.3 (KHTML, like Gecko) Chrome/19.0.1061.1 Safari/536.3",
+        "Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/536.3 (KHTML, like Gecko) Chrome/19.0.1061.1 Safari/536.3",
+        "Mozilla/5.0 (Windows NT 6.1) AppleWebKit/536.3 (KHTML, like Gecko) Chrome/19.0.1061.1 Safari/536.3",
+        "Mozilla/5.0 (Windows NT 6.2) AppleWebKit/536.3 (KHTML, like Gecko) Chrome/19.0.1061.0 Safari/536.3",
+        "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/535.24 (KHTML, like Gecko) Chrome/19.0.1055.1 Safari/535.24",
+        "Mozilla/5.0 (Windows NT 6.2; WOW64) AppleWebKit/535.24 (KHTML, like Gecko) Chrome/19.0.1055.1 Safari/535.24"
+    ])
+
+#代理池
+def ApiProxies():
+    url = 'http://dps.kdlapi.com/api/getdps/?orderid=915194706946933&num=1&pt=1&sep=2'
+    resp = requests.get(url)
+    htmlProxies = resp.text
+    print(htmlProxies)
+    return htmlProxies
+# print(htmlProxies)
+#网页解析
+def getHtml(url):
+    headers = {"User-Agent": USER_AGENT,
+               "Cookie":'RK=suoQlp+xbL; ptcz=6e7c1e2565e90aeb23136793bddfa60859d8757bd6a11b1696aa4ef7284081df; pgv_pvi=3069224960; pgv_pvid=1540909020; o_cookie=1075762722; pac_uid=1_1075762722; eas_sid=P1X544Y1O7F4a4h126D816V6r8; pt2gguin=o1075762722; tvfe_boss_uuid=03f17560302d6452; gr_user_id=5374e24b-47bb-4dd8-b4c8-2c5db5a3f936'}
+    Proxies = {'http': "http" + "://" + ApiProxies()}
+    resp = requests.get(url,headers=headers)
+    resp.encoding = 'utf-8'
+    html = resp.text
+    # print(proxies)
+    # print(resp.status_code)
+    # print(html)
+    return html
+
+#获取公众号页面
+def getPage(PublicAddress):
+    #通过搜狗可以获取到工作号阶段
+    url = 'https://weixin.sogou.com/weixin?type=1&s_from=input&query={}&_sug_=y&_sug_type_=&w='
+    newurl = url.format(PublicAddress)
+    # print(newurl)
+    html = getHtml(newurl)
+    time.sleep(3)
+    return html
+
+#获取公众号信息
+def getmsg(PublicAddress):
+    #选取其中的公众号
+    htmlFrist = getPage(PublicAddress)
+    parseHtml = etree.HTML(htmlFrist)
+    url_list= parseHtml.xpath('//div[@class="txt-box"]/p[@class="tit"]/a/@href')
+    url = url_list[0]
+    print(url)
+    # url = 'http://mp.weixin.qq.com/profile?src=3&timestamp=1551946800&ver=1&signature=bSSQMK1LY77M4O22qTi37cbhjhwNV7C9V4aor9HLhAt-Wdr*jWO2gFh3jN4KhPmYqldWQ6kYGltS38xCYX*xVA=='
+    headers = {"User-Agent": USER_AGENT,
+               }
+    Proxies = {'http': "http" + "://" + ApiProxies()}
+    resp = requests.get(url,headers=headers)
+    Html = resp.content
+    html = Html.decode()
+    time.sleep(2)
+    print(html)
+    r = r'{"list":.*}'
+    p = re.findall(r,html)
+    print(p)
+    time.sleep(5)
+    Jsonstr = json.loads(p[0])
+    msg_dict = {}
+    # 循环JSON列表 在公众号文章选取 有时间和url
+    for each_day in Jsonstr['list']:
+        msgover_list = []
+        datetime = each_day['comm_msg_info']['datetime']
+        day_all_list = each_day['app_msg_ext_info']['multi_app_msg_item_list']
+        for day_one in day_all_list:
+            s = day_one['content_url']
+            msg_new = s.replace('&amp;', '&')
+            # 有的不需要加'https://mp.weixin.qq.com'
+            if 'weixin' not in msg_new:
+                url = 'https://mp.weixin.qq.com' + msg_new
+            else:
+                url = msg_new
+            msgover_list.append(url)
+        msg_dict[datetime] = msgover_list
+    return msg_dict
+#从文章页面获取图片
+def pageImg(PublicAddress):
+    msg_dict = getmsg(PublicAddress)
+    #循环这十个网页
+    page = 0
+    with open(PublicAddress + '.csv', 'a', encoding='utf-8', newline='') as f:
+        write = csv.writer(f)
+        nowtime = str(int(time.time()))
+        write.writerow(['Crawltime(爬取时间)','Pagetime(文章时间)','filename(文章标题)', 'phLinkUrl(网页地址)', 'phUrl(图片链接)'])
+        if len(msg_dict) < 1:
+            print(PublicAddress+'没有链接')
+        for each_datetime in msg_dict.keys():
+            for each_url in msg_dict[each_datetime]:
+                print(each_url)
+                html = getHtml(each_url)
+                parseHtml = etree.HTML(html)
+                try:
+                    # 和普通的img的src不一样
+                    imgurl_list = parseHtml.xpath("//div//img/@data-src")
+                    imgname_list = parseHtml.xpath("//div[@id='img-content']/h2/text()")[0]
+                    linkurl = each_url
+                    for each_imgurl in imgurl_list:
+                            if 'gif' not in each_imgurl:
+                                write.writerow([nowtime,each_datetime,imgname_list.strip(),linkurl,each_imgurl])
+                    page += 1
+                    print('正在爬取'+PublicAddress+'第%d篇文章'% page)
+                except:
+                    print('爬取' + PublicAddress + '第%d篇文章出错了'% page)
+                    continue
+#主运行函数
+def Running(filename):
+    with open(filename,'r') as  f:
+        s = f.readlines()
+        num = 0
+        for each in s:
+            num += 1
+            if num == 12 :
+                time.sleep(20)
+                num = 0
+            try:
+                # os.mkdir(each.strip())
+                pageImg(each.strip())
+                time.sleep(15)
+            except:
+                print(each + '发生了错误')
+                continue
+
+
+if __name__ == '__main__':
+
+    begin = int(time.time())
+    th1 = threading.Thread(target=Running, args=('公众号0.txt',))
+    # th2 = threading.Thread(target=Running, args=('公众号0.txt',))
+    th1.start()
+    # th2.start()
+    end = int(time.time())
+    takeTime = end - begin
+    print('总共爬取了%d秒' % takeTime)
+
